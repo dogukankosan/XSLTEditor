@@ -1,0 +1,5 @@
+C:\Users\DOGUKAN\source\repos\XSLTEditor\XSLTEditor\obj\Release\XSLTEditor.csproj.AssemblyReference.cache
+C:\Users\DOGUKAN\source\repos\XSLTEditor\XSLTEditor\obj\Release\XSLTEditor.Forms.EditorForm.resources
+C:\Users\DOGUKAN\source\repos\XSLTEditor\XSLTEditor\obj\Release\XSLTEditor.Forms.LicenseForm.resources
+C:\Users\DOGUKAN\source\repos\XSLTEditor\XSLTEditor\obj\Release\XSLTEditor.Properties.Resources.resources
+C:\Users\DOGUKAN\source\repos\XSLTEditor\XSLTEditor\obj\Release\XSLTEditor.csproj.GenerateResource.cache
