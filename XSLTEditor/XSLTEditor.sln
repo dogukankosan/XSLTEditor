@@ -5,8 +5,6 @@ VisualStudioVersion = 15.0.36617.4
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "XSLTEditor", "XSLTEditor\XSLTEditor.csproj", "{E27A893A-5CB0-48D3-8DF9-7A8330BE98F5}"
 EndProject
-Project("{54435603-DBB4-11D2-8724-00A0C9A8B90C}") = "XSLTEditorSetup", "XSLTEditorSetup\XSLTEditorSetup.vdproj", "{10AF95E5-255F-4F24-B84A-91DF580A7F5F}"
-EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -17,8 +15,6 @@ Global
 		{E27A893A-5CB0-48D3-8DF9-7A8330BE98F5}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{E27A893A-5CB0-48D3-8DF9-7A8330BE98F5}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{E27A893A-5CB0-48D3-8DF9-7A8330BE98F5}.Release|Any CPU.Build.0 = Release|Any CPU
-		{10AF95E5-255F-4F24-B84A-91DF580A7F5F}.Debug|Any CPU.ActiveCfg = Debug
-		{10AF95E5-255F-4F24-B84A-91DF580A7F5F}.Release|Any CPU.ActiveCfg = Release
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -42,11 +42,13 @@ namespace XSLTEditor.Forms
             this.btnEFatura = new DevExpress.XtraBars.BarCheckItem();
             this.btnEIrsaliye = new DevExpress.XtraBars.BarCheckItem();
             this.bgBelgeTuru = new DevExpress.XtraBars.BarButtonGroup();
+            this.btn_PDF = new DevExpress.XtraBars.BarButtonItem();
             this.rpHome = new DevExpress.XtraBars.Ribbon.RibbonPage();
             this.rpgDosya = new DevExpress.XtraBars.Ribbon.RibbonPageGroup();
             this.rpgXml = new DevExpress.XtraBars.Ribbon.RibbonPageGroup();
             this.rpgBelgeTuru = new DevExpress.XtraBars.Ribbon.RibbonPageGroup();
             this.rpgOnizleme = new DevExpress.XtraBars.Ribbon.RibbonPageGroup();
+            this.ribbonPageGroup1 = new DevExpress.XtraBars.Ribbon.RibbonPageGroup();
             this.rpgUygulama = new DevExpress.XtraBars.Ribbon.RibbonPageGroup();
             this.applicationMenu = new DevExpress.XtraBars.Ribbon.ApplicationMenu(this.components);
             this.splitMain = new DevExpress.XtraEditors.SplitContainerControl();
@@ -58,6 +60,8 @@ namespace XSLTEditor.Forms
             this.lblStatus = new System.Windows.Forms.Label();
             this.dlgAc = new System.Windows.Forms.OpenFileDialog();
             this.dlgKaydet = new System.Windows.Forms.SaveFileDialog();
+            this.ribbonPageGroup2 = new DevExpress.XtraBars.Ribbon.RibbonPageGroup();
+            this.btn_CloudDown = new DevExpress.XtraBars.BarButtonItem();
             ((System.ComponentModel.ISupportInitialize)(this.ribbonControl)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.applicationMenu)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.splitMain)).BeginInit();
@@ -87,9 +91,11 @@ namespace XSLTEditor.Forms
             this.btnCikis,
             this.btnEFatura,
             this.btnEIrsaliye,
-            this.bgBelgeTuru});
+            this.bgBelgeTuru,
+            this.btn_PDF,
+            this.btn_CloudDown});
             this.ribbonControl.Location = new System.Drawing.Point(0, 0);
-            this.ribbonControl.MaxItemId = 61;
+            this.ribbonControl.MaxItemId = 63;
             this.ribbonControl.Name = "ribbonControl";
             this.ribbonControl.Pages.AddRange(new DevExpress.XtraBars.Ribbon.RibbonPage[] {
             this.rpHome});
@@ -249,6 +255,15 @@ namespace XSLTEditor.Forms
             this.bgBelgeTuru.ItemLinks.Add(this.btnEIrsaliye);
             this.bgBelgeTuru.Name = "bgBelgeTuru";
             // 
+            // btn_PDF
+            // 
+            this.btn_PDF.Caption = "PDF";
+            this.btn_PDF.Id = 61;
+            this.btn_PDF.ImageOptions.Image = ((System.Drawing.Image)(resources.GetObject("btn_PDF.ImageOptions.Image")));
+            this.btn_PDF.ImageOptions.LargeImage = ((System.Drawing.Image)(resources.GetObject("btn_PDF.ImageOptions.LargeImage")));
+            this.btn_PDF.Name = "btn_PDF";
+            this.btn_PDF.ItemClick += new DevExpress.XtraBars.ItemClickEventHandler(this.btn_PDF_ItemClick);
+            // 
             // rpHome
             // 
             this.rpHome.Groups.AddRange(new DevExpress.XtraBars.Ribbon.RibbonPageGroup[] {
@@ -256,7 +271,9 @@ namespace XSLTEditor.Forms
             this.rpgXml,
             this.rpgBelgeTuru,
             this.rpgOnizleme,
-            this.rpgUygulama});
+            this.ribbonPageGroup1,
+            this.rpgUygulama,
+            this.ribbonPageGroup2});
             this.rpHome.Name = "rpHome";
             this.rpHome.Text = "Araçlar";
             // 
@@ -288,6 +305,12 @@ namespace XSLTEditor.Forms
             this.rpgOnizleme.ItemLinks.Add(this.btnDevTools);
             this.rpgOnizleme.Name = "rpgOnizleme";
             this.rpgOnizleme.Text = "Önizleme";
+            // 
+            // ribbonPageGroup1
+            // 
+            this.ribbonPageGroup1.ItemLinks.Add(this.btn_PDF);
+            this.ribbonPageGroup1.Name = "ribbonPageGroup1";
+            this.ribbonPageGroup1.Text = "İşlemler";
             // 
             // rpgUygulama
             // 
@@ -390,6 +413,20 @@ namespace XSLTEditor.Forms
             this.dlgKaydet.Filter = "XSLT Dosyası (*.xslt)|*.xslt|XSL Dosyası (*.xsl)|*.xsl";
             this.dlgKaydet.Title = "Farklı Kaydet";
             // 
+            // ribbonPageGroup2
+            // 
+            this.ribbonPageGroup2.ItemLinks.Add(this.btn_CloudDown);
+            this.ribbonPageGroup2.Name = "ribbonPageGroup2";
+            // 
+            // btn_CloudDown
+            // 
+            this.btn_CloudDown.Caption = "Bulut Fatura İndir";
+            this.btn_CloudDown.Id = 62;
+            this.btn_CloudDown.ImageOptions.Image = ((System.Drawing.Image)(resources.GetObject("barButtonItem1.ImageOptions.Image")));
+            this.btn_CloudDown.ImageOptions.LargeImage = ((System.Drawing.Image)(resources.GetObject("barButtonItem1.ImageOptions.LargeImage")));
+            this.btn_CloudDown.Name = "btn_CloudDown";
+            this.btn_CloudDown.ItemClick += new DevExpress.XtraBars.ItemClickEventHandler(this.btn_CloudDown_ItemClick);
+            // 
             // EditorForm
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
@@ -454,5 +491,9 @@ namespace XSLTEditor.Forms
         private Label lblStatus;
         private OpenFileDialog dlgAc;
         private SaveFileDialog dlgKaydet;
+        private BarButtonItem btn_PDF;
+        private RibbonPageGroup ribbonPageGroup1;
+        private BarButtonItem btn_CloudDown;
+        private RibbonPageGroup ribbonPageGroup2;
     }
 }

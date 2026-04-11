@@ -102,6 +102,32 @@ namespace XSLTEditor.Classes
                 ? Path.GetFileName(defaultYol)
                 : "(XML bulunamadı)";
         }
+        /// <summary>
+        /// XML içeriğini string olarak alır, TEMP klasörüne kaydeder ve aktif yapar.
+        /// </summary>
+        public static bool XmlIceriktenYukle(string xmlIcerik, string dosyaAdi = null)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(xmlIcerik))
+                {
+                    LogManager.Hata("XML içeriği boş.");
+                    return false;
+                }
+                if (string.IsNullOrEmpty(dosyaAdi))
+                    dosyaAdi = $"cloud_{DateTime.Now:yyyyMMddHHmmss}.xml";
+                string hedefYol = Path.Combine(TempDir, dosyaAdi);
+                File.WriteAllText(hedefYol, xmlIcerik, System.Text.Encoding.UTF8);
+                _aktifXmlYolu = hedefYol;
+                LogManager.Bilgi($"Cloud XML TEMP'e kaydedildi: {hedefYol}");
+                return true;
+            }
+            catch (Exception ex)
+            {
+                LogManager.Hata("XmlIceriktenYukle hatası", ex);
+                return false;
+            }
+        }
     }
     public enum BelgeTuru
     {

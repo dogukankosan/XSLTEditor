@@ -1,7 +1,10 @@
 ﻿using System;
 using System.Drawing;
 using System.IO;
+using System.Text;
+using System.Threading.Tasks;
 using System.Windows.Forms;
+using System.Xml;
 using CefSharp;
 using CefSharp.WinForms;
 using DevExpress.XtraBars;
@@ -185,6 +188,7 @@ namespace XSLTEditor.Forms
             else if (e.KeyCode == Keys.F5) { e.Handled = true; DonusumYapVeGoster(); }
             else if (e.Control && e.KeyCode == Keys.Space) { e.Handled = true; TamamlamaAc(); }
             else if (e.Control && e.KeyCode == Keys.F) { e.Handled = true; AraDialogGoster(); }
+            else if (e.Control && e.KeyCode == Keys.H) { e.Handled = true; BulDegistirDialogGoster(); } // YENİ
         }
         // ── XSLT Aç ──────────────────────────────────────────────────────────
         private void btnAc_ItemClick(object sender, ItemClickEventArgs e)
@@ -503,5 +507,275 @@ namespace XSLTEditor.Forms
             => this.btnEFatura.Checked ? BelgeTuru.EFatura : BelgeTuru.EIrsaliye;
         private string BelgeTuruAdi()
             => this.btnEFatura.Checked ? "e-Fatura" : "e-İrsaliye";
+        private async void btn_PDF_ItemClick(object sender, ItemClickEventArgs e)
+        {
+            if (browser == null || browser.IsDisposed || !browser.IsBrowserInitialized)
+            {
+                XtraMessageBox.Show("Önizleme henüz yüklenmedi.", "Uyarı",
+                    MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+            using (SaveFileDialog dlg = new SaveFileDialog())
+            {
+                dlg.Filter = "PDF Dosyası (*.pdf)|*.pdf";
+                dlg.Title = "PDF Olarak Kaydet";
+                dlg.FileName = string.IsNullOrEmpty(aktifXsltYolu)
+                    ? "onizleme"
+                    : Path.GetFileNameWithoutExtension(aktifXsltYolu);
+                if (dlg.ShowDialog() != DialogResult.OK) return;
+                try
+                {
+                    SetStatus("PDF oluşturuluyor...");
+                    // Sayfa yüklenene kadar bekle
+                    if (browser.IsLoading)
+                    {
+                        await Task.Run(() =>
+                        {
+                            int bekle = 0;
+                            while (browser.IsLoading && bekle < 5000)
+                            {
+                                System.Threading.Thread.Sleep(100);
+                                bekle += 100;
+                            }
+                        });
+                    }
+                    await Task.Delay(500); // Render için ekstra süre
+                    PdfPrintSettings pdfSettings = new PdfPrintSettings
+                    {
+                        MarginType = CefPdfPrintMarginType.Default,
+                        Landscape = false,
+                        PrintBackground = true,
+                    };
+                    bool basarili = await browser.PrintToPdfAsync(dlg.FileName, pdfSettings);
+                    if (basarili)
+                    {
+                        SetStatus(string.Format("✓ PDF kaydedildi: {0}", Path.GetFileName(dlg.FileName)));
+                        LogManager.Bilgi(string.Format("PDF kaydedildi: {0}", dlg.FileName));
+                        if (XtraMessageBox.Show("PDF oluşturuldu. Açmak ister misiniz?",
+                                "PDF Hazır", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes)
+                        {
+                            System.Diagnostics.Process.Start(dlg.FileName);
+                        }
+                    }
+                    else
+                    {
+                        // Neden false döndüğünü logla
+                        string url = browser.Address;
+                        LogManager.Hata("PDF false döndü. Browser adresi: " + url, null);
+                        SetStatus("✗ PDF oluşturulamadı.");
+                        XtraMessageBox.Show("PDF oluşturulamadı.\nBrowser adresi: " + url,
+                            "Hata", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    SetStatus("✗ PDF hatası: " + ex.Message);
+                    LogManager.Hata("PDF oluşturma hatası", ex);
+                    XtraMessageBox.Show("PDF hatası:\n" + ex.Message, "Hata",
+                        MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
+            }
+        }
+        private void btn_CloudDown_ItemClick(object sender, ItemClickEventArgs e)
+        {
+            using (CloudUblDownloadForm form = new CloudUblDownloadForm())
+            {
+                if (form.ShowDialog(this) != DialogResult.OK) return;
+                try
+                {
+                    string dosyaAdi = Path.GetFileName(form.KaydedilenYol);
+                    // 1. XML'i editöre yükle
+                    if (!InvoiceLoader.XmlIceriktenYukle(form.XmlSonuc, dosyaAdi))
+                    {
+                        XtraMessageBox.Show("XML editöre yüklenemedi.", "Hata",
+                            MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        return;
+                    }
+                    // 2. Belge türünü algıla
+                    BelgeTuru algilanan = form.XmlSonuc.Contains("DespatchAdvice")
+                        ? BelgeTuru.EIrsaliye
+                        : BelgeTuru.EFatura;
+                    if (algilanan == BelgeTuru.EFatura)
+                    {
+                        this.btnEFatura.Checked = true;
+                        this.btnEIrsaliye.Checked = false;
+                    }
+                    else
+                    {
+                        this.btnEFatura.Checked = false;
+                        this.btnEIrsaliye.Checked = true;
+                    }
+                    // 3. XML içindeki gömülü XSLT'yi çıkar
+                    string xsltYolu = GomluXsltCikar(form.XmlSonuc, form.KaydedilenYol);
+                    if (!string.IsNullOrEmpty(xsltYolu))
+                    {
+                        // 4. XSLT'yi editöre yükle
+                        aktifXsltYolu = xsltYolu;
+                        this.textEditor.LoadFile(aktifXsltYolu, false, true);
+                        this.tpEditor.Text = Path.GetFileName(aktifXsltYolu);
+                        this.btnKaydet.Enabled = false;
+                        this.btnFarkliKaydet.Enabled = true;
+                        this.btnYenile.Enabled = true;
+                        GuncelleFolding();
+                        SetStatus(string.Format("✓ Cloud UBL yüklendi: {0}  |  XSLT: {1}",
+                            dosyaAdi, Path.GetFileName(xsltYolu)));
+                        LogManager.Bilgi(string.Format("Cloud UBL + XSLT yüklendi. XML: {0} | XSLT: {1}",
+                            form.KaydedilenYol, xsltYolu));
+                    }
+                    else
+                    {
+                        SetStatus(string.Format("✓ Cloud UBL yüklendi: {0}  |  Gömülü XSLT bulunamadı",
+                            dosyaAdi));
+                        LogManager.Uyari("XML içinde gömülü XSLT bulunamadı.");
+                    }
+                    // 5. Önizlemeyi güncelle
+                    if (!string.IsNullOrEmpty(aktifXsltYolu))
+                        DonusumYapVeGoster();
+                }
+                catch (Exception ex)
+                {
+                    LogManager.Hata("Cloud UBL yükleme hatası", ex);
+                    XtraMessageBox.Show("Hata:\n" + ex.Message, "Hata",
+                        MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
+            }
+        }
+        private string GomluXsltCikar(string xmlIcerik, string xmlYolu)
+        {
+            try
+            {
+                // XML parse et
+                XmlDocument doc = new System.Xml.XmlDocument();
+                doc.LoadXml(xmlIcerik);
+                // Namespace manager — UBL namespace'leri
+               XmlNamespaceManager ns = new System.Xml.XmlNamespaceManager(doc.NameTable);
+                ns.AddNamespace("cbc", "urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2");
+                // EmbeddedDocumentBinaryObject node'unu bul
+                XmlNode node = doc.SelectSingleNode("//cbc:EmbeddedDocumentBinaryObject", ns);
+                if (node == null)
+                {
+                    LogManager.Uyari("EmbeddedDocumentBinaryObject node'u bulunamadı.");
+                    return null;
+                }
+                string base64 = node.InnerText.Trim();
+                if (string.IsNullOrEmpty(base64))
+                {
+                    LogManager.Uyari("EmbeddedDocumentBinaryObject içeriği boş.");
+                    return null;
+                }
+                // Base64 decode
+                byte[] xsltBytes = Convert.FromBase64String(base64);
+                string xsltIcerik = Encoding.UTF8.GetString(xsltBytes);
+                // Dosya adını node'dan al (filename attribute)
+                string dosyaAdi = "embedded.xslt";
+               XmlAttribute filenameAttr = node.Attributes?["filename"];
+                if (filenameAttr != null && !string.IsNullOrEmpty(filenameAttr.Value))
+                    dosyaAdi = filenameAttr.Value;
+                // TEMP klasörüne kaydet
+                string xsltYolu = Path.Combine(InvoiceLoader.TempDir, dosyaAdi);
+                File.WriteAllText(xsltYolu, xsltIcerik, Encoding.UTF8);
+                LogManager.Bilgi(string.Format("Gömülü XSLT çıkarıldı: {0}", xsltYolu));
+                return xsltYolu;
+            }
+            catch (Exception ex)
+            {
+                LogManager.Hata("Gömülü XSLT çıkarma hatası", ex);
+                return null;
+            }
+        }
+        private void BulDegistirDialogGoster()
+        {
+            using (Form frm = new Form())
+            {
+                frm.Text = "Bul ve Değiştir";
+                frm.Size = new Size(420, 180);
+                frm.FormBorderStyle = FormBorderStyle.FixedDialog;
+                frm.StartPosition = FormStartPosition.CenterParent;
+                frm.MaximizeBox = false;
+                frm.MinimizeBox = false;
+                // Aranan
+                Label lblAra = new Label { Text = "Aranan:", Left = 10, Top = 14, Width = 80 };
+                TextBox txtAra = new TextBox { Left = 95, Top = 10, Width = 230, Text = _sonArama };
+                // Yeni değer
+                Label lblYeni = new Label { Text = "Değiştir:", Left = 10, Top = 46, Width = 80 };
+                TextBox txtYeni = new TextBox { Left = 95, Top = 42, Width = 230 };
+                // Büyük/küçük harf
+                CheckBox chkCase = new CheckBox { Left = 10, Top = 76, Text = "Büyük/Küçük Harf Duyarlı", Width = 200 };
+                // Butonlar
+                Button btnDegistir = new Button { Left = 95, Top = 106, Width = 110, Height = 26, Text = "Değiştir" };
+                Button btnHepsiniDeg = new Button { Left = 215, Top = 106, Width = 110, Height = 26, Text = "Hepsini Değiştir" };
+                frm.Controls.AddRange(new Control[]
+                {
+            lblAra, txtAra, lblYeni, txtYeni, chkCase, btnDegistir, btnHepsiniDeg
+                });
+                // Değiştir — bir sonrakini bul ve değiştir
+                btnDegistir.Click += (s, ev) =>
+                {
+                    string aranan = txtAra.Text;
+                    string yeni = txtYeni.Text;
+                    if (string.IsNullOrEmpty(aranan)) return;
+                    var comp = chkCase.Checked
+                        ? StringComparison.Ordinal
+                        : StringComparison.OrdinalIgnoreCase;
+                    string icerik = this.textEditor.Document.TextContent;
+                    int idx = icerik.IndexOf(aranan, _sonAramaOffset, comp);
+                    if (idx < 0 && _sonAramaOffset > 0)
+                    {
+                        _sonAramaOffset = 0;
+                        idx = icerik.IndexOf(aranan, 0, comp);
+                    }
+                    if (idx >= 0)
+                    {
+                        // Seçili metni değiştir
+                        this.textEditor.Document.Replace(idx, aranan.Length, yeni);
+                        _sonAramaOffset = idx + yeni.Length;
+                        // Sonraki aramaya hazır — imleci konumlandır
+                        var doc = this.textEditor.Document;
+                        TextLocation bas = doc.OffsetToPosition(_sonAramaOffset > 0
+                            ? _sonAramaOffset - yeni.Length : 0);
+                        this.textEditor.ActiveTextAreaControl.JumpTo(bas.Line, bas.Column);
+                        XtraMessageBox.Show($"Değiştirildi: '{aranan}' → '{yeni}'", "Değiştirildi",
+                            MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    }
+                    else
+                    {
+                        _sonAramaOffset = 0;
+                        XtraMessageBox.Show($"'{aranan}' bulunamadı.", "Bulunamadı",
+                            MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    }
+                };
+                // Hepsini Değiştir
+                btnHepsiniDeg.Click += (s, ev) =>
+                {
+                    string aranan = txtAra.Text;
+                    string yeni = txtYeni.Text;
+                    if (string.IsNullOrEmpty(aranan)) return;
+                    var comp = chkCase.Checked
+                        ? StringComparison.Ordinal
+                        : StringComparison.OrdinalIgnoreCase;
+                    string icerik = this.textEditor.Document.TextContent;
+                    int sayac = 0;
+                    int idx;
+                    int offset = 0;
+                    while ((idx = icerik.IndexOf(aranan, offset, comp)) >= 0)
+                    {
+                        this.textEditor.Document.Replace(idx, aranan.Length, yeni);
+                        icerik = this.textEditor.Document.TextContent;
+                        offset = idx + yeni.Length;
+                        sayac++;
+                    }
+                    _sonAramaOffset = 0;
+                    GuncelleFolding();
+                    if (sayac > 0)
+                        XtraMessageBox.Show($"{sayac} adet '{aranan}' → '{yeni}' olarak değiştirildi.",
+                            "Tamamlandı", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    else
+                        XtraMessageBox.Show($"'{aranan}' bulunamadı.", "Bulunamadı",
+                            MessageBoxButtons.OK, MessageBoxIcon.Information);
+                };
+                frm.KeyDown += (s, ev) => { if (ev.KeyCode == Keys.Escape) frm.Close(); };
+                frm.ShowDialog(this);
+            }
+        }
     }
 }
