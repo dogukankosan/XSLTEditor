@@ -1,6 +1,7 @@
 # 🖋️ XSLT Editor — Mutlu Yazılım
 
-<img width="1527" height="846" alt="ekran" src="https://github.com/user-attachments/assets/b64fac69-ece7-4528-bae3-53efc9567249" />
+<img width="1302" height="752" alt="123" src="https://github.com/user-attachments/assets/4e6da927-666f-4631-9549-f1535fd25ffd" />
+
 
 ![License](https://img.shields.io/github/license/dogukankosan/XSLTEditor)
 ![Stars](https://img.shields.io/github/stars/dogukankosan/XSLTEditor)
@@ -21,6 +22,7 @@
 - 🔎 **Metin arama** — Ctrl+F ile büyük/küçük harf duyarlı arama
 - 📂 **Belge türü otomatik algılama** — XSLT ve XML içeriğine göre e-Fatura / e-İrsaliye otomatik seçilir
 - 🔒 **Donanım tabanlı lisanslama** — SHA256 Hardware ID ile sunucu üzerinden lisans doğrulama
+- 🗝️ **Güvenli kimlik bilgisi yönetimi** — AES-256-GCM şifreli SQLite tabanlı token & ayar saklama
 - 📝 **Günlük log sistemi** — Tüm işlemler tarih bazlı LOG klasörüne kaydedilir
 - 🎨 **DevExpress Ribbon arayüzü** — Modern ve kullanıcı dostu görünüm
 
@@ -32,6 +34,7 @@
 XSLTEditor/
 ├── Classes/
 │   ├── AppConfig.cs               # app.config okuma (API URL)
+│   ├── CredentialManager.cs       # AES-GCM şifreli SQLite ile kimlik & token yönetimi
 │   ├── HardwareInfo.cs            # WMI ile donanım ID üretimi (SHA256)
 │   ├── InvoiceLoader.cs           # XML kaynak yönetimi (default / kullanıcı)
 │   ├── LicenseChecker.cs          # API üzerinden lisans doğrulama
@@ -42,6 +45,8 @@ XSLTEditor/
 ├── Forms/
 │   ├── EditorForm.cs              # Ana editör ekranı
 │   └── LicenseForm.cs             # Lisans hata ekranı
+├── Database/
+│   └── credentials.db             # Şifreli kimlik & token veritabanı (otomatik oluşturulur)
 ├── UBL/
 │   ├── FATubl.xml                 # Default e-Fatura örnek XML
 │   └── IRSubl.xml                 # Default e-İrsaliye örnek XML
@@ -64,6 +69,56 @@ Uygulama başlatıldığında **donanım ID'si** (CPU + Anakart + BIOS seri numa
 
 ---
 
+## 🗝️ Kimlik Bilgisi & Token Yönetimi (CredentialManager)
+
+`CredentialManager` sınıfı, kullanıcı kimlik bilgilerini ve oturum token'larını **AES-256-GCM** şifrelemesiyle **SQLite** veritabanında güvenli biçimde saklar.
+
+### Veritabanı Yapısı
+
+```
+Database/credentials.db
+├── settings   → Anahtar-değer çiftleri (şifreli)
+└── tokens     → Oturum token'ları (şifreli, tek kayıt)
+```
+
+### Şifreleme
+
+| Özellik | Detay |
+|---|---|
+| Algoritma | AES-256-GCM (BouncyCastle) |
+| Anahtar uzunluğu | 256 bit (32 byte) |
+| Nonce | 12 byte, her şifreleme için rastgele üretilir |
+| Auth Tag | 128 bit |
+
+- Her `Encrypt` çağrısında benzersiz nonce üretilir; aynı veri her seferinde farklı şifre üretir.
+- Nonce, şifreli veriyle birlikte Base64 olarak saklanır (`nonce [12B] + ciphertext + tag`).
+
+### Token Yönetimi
+
+| Metot | Açıklama |
+|---|---|
+| `SaveToken(token, expireDate, server, firm)` | Mevcut token'ı silerek yeni token kaydeder |
+| `GetValidToken()` | Geçerli token döndürür; süresi dolmuşsa (5 dk erken) `null` döner |
+| `ClearToken()` | Token tablosunu temizler |
+
+Token süresi dolmadan **5 dakika önce** geçersiz sayılır; bu sayede sunucuya süresi dolmuş token gönderilmez.
+
+### Ayar Yönetimi
+
+```csharp
+CredentialManager.Save("kullanici_adi", "örnek_değer"); // Şifreli kaydet
+string deger = CredentialManager.Load("kullanici_adi"); // Çözerek oku
+```
+
+### Kullanılan Paket
+
+```
+Portable.BouncyCastle   (Org.BouncyCastle.Crypto)
+System.Data.SQLite
+```
+
+---
+
 ## 🛠️ Kurulum & Çalıştırma
 
 ### Gereksinimler
@@ -82,10 +137,12 @@ Uygulama başlatıldığında **donanım ID'si** (CPU + Anakart + BIOS seri numa
 
 2. **NuGet Paketlerini Yükle:**
    ```
-   CefSharp.WinForms       v119.4.30
-   ICSharpCode.TextEditor  v3.2.1
-   Saxon-HE                v10.9.0
-   DevExpress              v20.1
+   CefSharp.WinForms         v119.4.30
+   ICSharpCode.TextEditor    v3.2.1
+   Saxon-HE                  v10.9.0
+   DevExpress                v20.1
+   System.Data.SQLite        (latest)
+   Portable.BouncyCastle     (latest)
    ```
 
 3. **`app.config` Dosyasını Güncelle:**
@@ -135,6 +192,8 @@ Uygulama başlatıldığında **donanım ID'si** (CPU + Anakart + BIOS seri numa
 | ICSharpCode TextEditor | Kod editörü |
 | DevExpress 20.1 | Ribbon arayüzü |
 | System.Management | WMI donanım bilgisi |
+| System.Data.SQLite | Yerel veritabanı |
+| Portable.BouncyCastle | AES-256-GCM şifreleme |
 
 ---
 
@@ -163,4 +222,6 @@ MIT License
   <img src="https://img.shields.io/badge/CefSharp-119.4.30-green" alt="cefsharp" />
   <img src="https://img.shields.io/badge/Saxon--HE-10.9.0-orange" alt="saxon" />
   <img src="https://img.shields.io/badge/DevExpress-20.1-purple" alt="devexpress" />
+  <img src="https://img.shields.io/badge/AES--256--GCM-BouncyCastle-red" alt="bouncy" />
+  <img src="https://img.shields.io/badge/SQLite-credentials-blue" alt="sqlite" />
 </p>
