@@ -1,6 +1,6 @@
-# 🖋️ XSLT Editor — Mutlu Yazılım
+# 🖋️ XSLT Editor 
 
-<img width="1302" height="752" alt="123" src="https://github.com/user-attachments/assets/4e6da927-666f-4631-9549-f1535fd25ffd" />
+<img width="1630" height="1036" alt="abc" src="https://github.com/user-attachments/assets/a390e4bf-9fd0-4bb2-9ad7-35754a064052" />
 
 
 ![License](https://img.shields.io/github/license/dogukankosan/XSLTEditor)
